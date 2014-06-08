@@ -446,4 +446,45 @@ fn test_parsefail() {
     test_parsefail_1("P0S");
     test_parsefail_1("T0S");
     test_parsefail_1("PT0");
+
+    // Overflow causes parse failure
+    test_parsefail_1("PT922337203685.4775808S");
+    test_parsefail_1("PT-922337203685.4775809S");
+    test_parsefail_1("PT922337203685.47758075S");
+    test_parsefail_1("PT-922337203685.47758086S");
+    test_parsefail_1("PT922337203686S");
+    test_parsefail_1("PT-922337203686S");
+    test_parsefail_1("PT100000000000000000000000000S");
+    test_parsefail_1("PT-100000000000000000000000000S");
+}
+
+#[cfg(test)]
+fn test_parse_1(s: &str, d: i64) {
+    match from_str::<Duration>(s) {
+        Some(r) => if r.ticks != d {
+            fail!("input: '{}', expected: {}, output: {}",
+                  s, d, r.ticks);
+        },
+        None => fail!("input: '{}' failed to parse"),
+    }
+}
+
+#[test]
+fn test_parse() {
+    test_parse_1("PT0S", 0);
+    test_parse_1("PT-0S", 0);
+    test_parse_1("pt0s", 0);
+    test_parse_1("PT0.0000000S", 0);
+    test_parse_1("PT0.000000000000000000S", 0);
+
+    // Test rounding digits beyond the precision actually stored
+    test_parse_1("PT0.00000005S", 0);
+    test_parse_1("PT0.000000050S", 0);
+    test_parse_1("PT0.0000000500000000000000000000000000000000000S", 0);
+    test_parse_1("PT0.00000006S", 1);
+    test_parse_1("PT0.000000051S", 1);
+    test_parse_1("PT0.0000000500000000000000000000000000000000001S", 1);
+    test_parse_1("PT0.00000014S", 1);
+    test_parse_1("PT0.000000149999999999999999999999999999999999S", 1);
+    test_parse_1("PT0.00000015S", 2);
 }
