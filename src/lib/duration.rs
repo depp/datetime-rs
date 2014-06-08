@@ -141,7 +141,7 @@ impl FromStr for Duration {
                         None => return None
                     };
                     if rem.char_at(7) == '5' &&
-                        rem.slice_from(7).chars().all(|c| c == '0') {
+                        rem.slice(8, len).chars().all(|c| c == '0') {
                         n + (n & 1)
                     } else if rem.char_at(7) >= '5' {
                         n + 1
