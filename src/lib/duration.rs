@@ -92,11 +92,11 @@ impl FromStr for Duration {
 
         let r = s;
         let r = match r.slice_shift_char() {
-            (Some(c), r) => if c == 'P' || c == 'p' { r } else { return None },
-            _ => return None,
+            (Some(c), r) if c == 'P' || c == 'p' => r,
+            _ => return None
         };
         let r = match r.slice_shift_char() {
-            (Some(c), r) => if c == 'T' || c == 't' { r } else { return None },
+            (Some(c), r) if c == 'T' || c == 't' => r,
             _ => return None
         };
 
@@ -110,35 +110,33 @@ impl FromStr for Duration {
                 Some(i) => i, None => return None
             };
             if len == 0 {
-                return None;
+                return None
             }
             let n = match from_str::<u64>(r.slice_to(len)) {
                 Some(n) => n, None => return None
             };
             let n = match n.checked_mul(&(SECOND.ticks as u64)) {
-                Some(n) => n,
-                _ => return None,
+                Some(n) => n, None => return None
             };
             (n, r.slice_from(len))
         };
 
         let (tick_part, r) = match r.slice_shift_char() {
-            (Some(c), rem) => if c == '.' || c == ',' {
+            (Some(c), rem) if c == '.' || c == ',' => {
                 let len = match rem.find(|c: char| !(c >= '0' && c <= '9')) {
                     Some(i) => i, None => return None
                 };
                 if len == 0 {
-                    return None;
+                    return None
                 }
                 let tick_part = if len <= 7 {
                     match from_str::<u64>(rem.slice_to(len)) {
                         Some(n) => n * pow(10u64, 7 - len),
-                        None => return None,
+                        None => return None
                     }
                 } else {
                     let n = match from_str::<u64>(rem.slice_to(7)) {
-                        Some(n) => n,
-                        None => return None
+                        Some(n) => n, None => return None
                     };
                     if rem.char_at(7) == '5' &&
                         rem.slice(8, len).chars().all(|c| c == '0') {
@@ -150,23 +148,17 @@ impl FromStr for Duration {
                     }
                 };
                 (tick_part, rem.slice_from(len))
-            } else {
-                (0u64, r)
-            },
+            }
             _ => (0u64, r)
         };
 
         match r.slice_shift_char() {
-            (Some(c), r) => if (c == 'S' || c == 's') && r.is_empty() {
-            } else {
-                return None
-            },
+            (Some(c), r) if (c == 'S' || c == 's') && r.is_empty() => {}
             _ => return None
         }
 
         let ticks = match sec_part.checked_add(&tick_part) {
-            Some(n) => n,
-            _ => return None,
+            Some(n) => n, None => return None
         };
 
         if negative {
@@ -190,20 +182,20 @@ impl Show for Duration {
         // Uses the ISO-8601 format for durations.
         // See: http://en.wikipedia.org/wiki/ISO_8601#Durations
         let datavec = match self.to_utf8_io(f.precision) {
-            Err(_) => return Err(WriteError),
             Ok(x) => x,
+            Err(_) => return Err(WriteError)
         };
         let data = datavec.as_slice();
         let padding = match f.width {
-            None => 0,
             Some(width) => {
                 let sz = data.len();
                 if width > sz { width - sz } else { 0 }
             }
+            None => 0
         };
 
         if padding == 0 {
-            return f.write(data);
+            return f.write(data)
         }
 
         if f.align == AlignLeft {
@@ -227,7 +219,7 @@ impl Duration {
     /// The IoResult is a convenience so we can use try!().
     fn to_utf8_io(&self, precision: Option<uint>) -> IoResult<Vec<u8>> {
         let mut w = MemWriter::with_capacity(32);
-        try!(w.write_str("PT"));
+        try!(w.write_str("PT"))
         let (negative, mag) = if self.ticks >= 0 {
             (false, self.ticks as u64)
         } else {
@@ -242,7 +234,7 @@ impl Duration {
                     dotpos -= 1;
                 }
                 (significand, dotpos, 0u)
-            },
+            }
             Some(prec) => {
                 if prec < 7 {
                     let dotpos = if prec > 0 { prec } else { 0 };
@@ -465,7 +457,7 @@ fn test_parse_1(s: &str, d: i64) {
             fail!("input: '{}', expected: {}, output: {}",
                   s, d, r.ticks);
         },
-        None => fail!("input: '{}' failed to parse"),
+        None => fail!("input: '{}' failed to parse")
     }
 }
 
