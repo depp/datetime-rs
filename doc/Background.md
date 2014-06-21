@@ -119,19 +119,50 @@ For example, "one month after May 31" cannot be interpreted unambiguously, since
 
 Leap seconds are seconds inserted or removed at the end of certain days to synchronize UTC with the physical rotation of the Earth.  The International Earth Rotation and Reference System Services announces typically announces leap seconds six months in advance.
 
-During leap seconds, Unix clocks become non-continuous and possibly non-monotonic.  Operating system APIs do not provide information about leap seconds and the vast majority of other APIs ignore them as well.
+* In the UTC time standard, the last minute of a day can have 61 or 59 seconds, and UTC clocks should read 23:59:60 when a leap second is inserted.
 
-Google handles leap seconds internally by applying adjustment over the course of the day, resulting in a monotonic and continuous clock with 86,400 seconds per day but which has an offset of up to 500 ms from UTC.
+* The POSIX clock is mandated to advance by 86,400 per day, and 1 per second within each day.  This means that if time T is a leap second that has been inserted, then the following second (midnight) is also identified by time stamp T.  It is usually understood that POSIX time is non-monotonic during leap seconds, jumping backward one second after the leap second is inserted, although a narrow reading of the POSIX standard leaves this open to interpretation.
+
+* The NTP clock advances by 86,400 per day, and during a leap second, advances by a negligible but nonzero amount whenever the time is queried.  This is POSIX-compatible if one uses a narrow reading of the POSIX standard.
+
+* The TAI time standard always has 86,400 seconds per day, and therefore drifts farther ahead of UTC every time a leap second is inserted.  As of 2014, TAI is exactly 35 seconds ahead of UTC.
+
+* The UTC-SLS standard handles leap seconds by adjusting the clock speed by 0.1% over the last 1000 seconds of a day.  UTC-SLS coincides with UTC at every hour and half-hour.  Google uses a similar technique for their servers.
+
+Operating system APIs do not provide information about leap seconds and the vast majority of other APIs ignore them as well (JSR-301 and NTP are exceptions).  Google's concern with leap seconds is software reliability: they decided that it would be more efficient to create an entirely new time scale rather than audit their entire code base for leap second bugs.  Indeed leap seconds cause software reliability problems, as many Linux system administrators experienced in 2012.
 
 #### References
 
 * [United States Naval Observatory: Leap Seconds][usno-leap-seconds]
 * [History of IEEE P1003.1 POSIX time][posix-time]
 * [Google Official Blog: Time, technology, and leaping seconds][leap-smear]
+* [Serverfault: Anyone else experiencing high rates of Linux server crashes during leap second day?][serverfault-leapsecond]
+* [Markus Kuhn: UTC with Smoothed Leap Seconds (UTC-SLS)][utc-sls]
+* [ThreeTen issue #24: Clock and UTC-SLS][threeten-24]
+* [ThreeTen issue #343: POSIX-compatibility with java.util.Date][threeten-343]
+* [Java 8 Documentation: Class Instant][java-instant]
+
+From the Google blog:
+
+> The leap smear is talked about internally in the Site Reliability Engineering group as one of our coolest workarounds, that took a lot of experimentation and verification, but paid off by ultimately saving us massive amounts of time and energy in inspecting and refactoring code. It meant that we didn’t have to sweep our entire (large) codebase, and Google engineers developing code don’t have to worry about leap seconds. The team involved in solving this issue was a handful of people, distributed around the world, who were able to work together without restriction in order to solve this problem.
+
+From the Java 8 documentation:
+
+> The Java Time-Scale divides each calendar day into exactly 86400 subdivisions, known as seconds. These seconds may differ from the SI second. It closely matches the de facto international civil time scale, the definition of which changes from time to time.
+
+> ...
+
+> Implementations of the Java time-scale using the JSR-310 API are not required to provide any clock that is sub-second accurate, or that progresses monotonically or smoothly. Implementations are therefore not required to actually perform the UTC-SLS slew or to otherwise be aware of leap seconds. JSR-310 does, however, require that implementations must document the approach they use when defining a clock representing the current instant. See Clock for details on the available clocks.
 
 [usno-leap-seconds]: http://tycho.usno.navy.mil/leapsec.html
 [posix-time]: http://www.mail-archive.com/leapsecs@rom.usno.navy.mil/msg00109.html
 [leap-smear]: http://googleblog.blogspot.com/2011/09/time-technology-and-leaping-seconds.html
+[serverfault-leapsecond]: http://serverfault.com/questions/403732/anyone-else-experiencing-high-rates-of-linux-server-crashes-during-a-leap-second
+[utc-sls]: http://www.cl.cam.ac.uk/~mgk25/time/utc-sls/
+[ntp-leap-seconds]: http://www.eecis.udel.edu/~mills/leap.html
+[threeten-24]: https://github.com/ThreeTen/threeten/issues/24
+[threeten-343]: https://github.com/ThreeTen/threeten/issues/343
+[java-instant]: http://docs.oracle.com/javase/8/docs/api/java/time/Instant.html
 
 ## High precision timers
 
