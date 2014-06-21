@@ -1,9 +1,11 @@
+use libc::types::os::common::posix01::{timespec, timeval};
 use std::num::{Bounded, pow};
 use std::u64;
 use std::io::{MemWriter, IoResult};
 use std::fmt::{Show, Formatter, FormatError, WriteError};
 use std::fmt::rt::AlignLeft;
 use std::from_str::FromStr;
+use tick;
 
 /// An absolute amount of time, independent of time zones and calendars.
 /// A duration can express the positive or negative difference between two
@@ -13,27 +15,6 @@ use std::from_str::FromStr;
 pub struct Duration {
     ticks : i64
 }
-
-/// Duration of one microsecond.
-pub static MICROSECOND: Duration = Duration { ticks: 10 };
-
-/// Duration of one millisecond.
-pub static MILLISECOND: Duration = Duration { ticks: 1000 * MICROSECOND.ticks };
-
-/// Duration of one second.
-pub static SECOND: Duration = Duration { ticks: 1000 * MILLISECOND.ticks };
-
-/// Duration of one minute.
-pub static MINUTE: Duration = Duration { ticks: 60 * SECOND.ticks };
-
-/// Duration of one hour.
-pub static HOUR: Duration = Duration { ticks: 60 * MINUTE.ticks };
-
-/// Duration of one standard day (24 hours).
-pub static STANDARD_DAY: Duration = Duration { ticks: 24 * HOUR.ticks };
-
-/// Duration of one standard week (7 standard days).
-pub static STANDARD_WEEK: Duration = Duration { ticks: 7 * STANDARD_DAY.ticks };
 
 impl Add<Duration, Duration> for Duration {
     fn add(&self, rhs: &Duration) -> Duration {
@@ -115,7 +96,7 @@ impl FromStr for Duration {
             let n = match from_str::<u64>(r.slice_to(len)) {
                 Some(n) => n, None => return None
             };
-            let n = match n.checked_mul(&(SECOND.ticks as u64)) {
+            let n = match n.checked_mul(&(tick::SECOND as u64)) {
                 Some(n) => n, None => return None
             };
             (n, r.slice_from(len))
@@ -273,39 +254,66 @@ impl Duration {
         Ok(w.unwrap())
     }
 
-    /// Convert from microseconds to a duration.
+    /// Convert from microseconds to a duration.  No overflow protection.
     pub fn from_microseconds(n: i64) -> Duration {
-        MICROSECOND * n
+        Duration { ticks: tick::MICROSECOND * n }
     }
 
-    /// Convert from milliseconds to a duration.
+    /// Convert from milliseconds to a duration.  No overflow protection.
     pub fn from_milliseconds(n: i64) -> Duration {
-        MILLISECOND * n
+        Duration { ticks: tick::MILLISECOND * n }
     }
 
-    /// Convert from seconds to a duration.
+    /// Convert from seconds to a duration.  No overflow protection.
     pub fn from_seconds(n: i64) -> Duration {
-        SECOND * n
+        Duration { ticks: tick::SECOND * n }
     }
 
-    /// Convert from minutes to a duration.
+    /// Convert from standard minutes to a duration.  No overflow protection.
     pub fn from_minutes(n: i64) -> Duration {
-        MINUTE * n
+        Duration { ticks: tick::MINUTE * n }
     }
 
-    /// Convert from hours to a duration.
+    /// Convert from standard hours to a duration.  No overflow protection.
     pub fn from_hours(n: i64) -> Duration {
-        HOUR * n
+        Duration { ticks: tick::HOUR * n }
     }
 
-    /// Convert from standard days to a duration.
+    /// Convert from standard days to a duration.  No overflow protection.
     pub fn from_standard_days(n: i64) -> Duration {
-        STANDARD_DAY * n
+        Duration { ticks: tick::DAY * n }
     }
 
-    /// Convert from standard weeks to a duration.
+    /// Convert from standard weeks to a duration.  No overflow protection.
     pub fn from_standard_weeks(n: i64) -> Duration {
-        STANDARD_WEEK * n
+        Duration { ticks: tick::DAY * 7 * n }
+    }
+
+    /// Convert to whole seconds, with rounding.
+    pub fn to_seconds(&self) -> i64 {
+        tick::to_sec(self.ticks)
+    }
+
+    /// Convert to whole milliseconds, with rounding.
+    pub fn to_milliseconds(&self) -> i64 {
+        tick::to_msec(self.ticks)
+    }
+
+    /// Convert to whole microseconds, with rounding.
+    pub fn to_microseconds(&self) -> i64 {
+        tick::to_usec(self.ticks)
+    }
+
+    /// Convert to a POSIX timespec structure.
+    pub fn to_timespec(&self) -> timespec {
+        let (sec, nsec) = tick::to_sec_nsec(self.ticks);
+        timespec { tv_sec: sec, tv_nsec: nsec as i64 }
+    }
+
+    /// Convert to a POSIX timeval structure, with rounding.
+    pub fn to_timeval(&self) -> timeval {
+        let (sec, usec) = tick::to_sec_usec(self.ticks);
+        timeval { tv_sec: sec, tv_usec: usec as i64 }
     }
 }
 
@@ -336,20 +344,20 @@ fn test_format() {
     test_format_1(1000000, "PT0.1S");
     test_format_1(-1000000, "PT-0.1S");
 
-    test_format_1(SECOND.ticks, "PT1S");
-    test_format_1(-SECOND.ticks, "PT-1S");
+    test_format_1(tick::SECOND, "PT1S");
+    test_format_1(-tick::SECOND, "PT-1S");
 
-    test_format_1(MINUTE.ticks, "PT60S");
-    test_format_1(-MINUTE.ticks, "PT-60S");
+    test_format_1(tick::MINUTE, "PT60S");
+    test_format_1(-tick::MINUTE, "PT-60S");
 
-    test_format_1(HOUR.ticks, "PT3600S");
-    test_format_1(-HOUR.ticks, "PT-3600S");
+    test_format_1(tick::HOUR, "PT3600S");
+    test_format_1(-tick::HOUR, "PT-3600S");
 
-    test_format_1(STANDARD_DAY.ticks, "PT86400S");
-    test_format_1(-STANDARD_DAY.ticks, "PT-86400S");
+    test_format_1(tick::STANDARD_DAY, "PT86400S");
+    test_format_1(-tick::STANDARD_DAY, "PT-86400S");
 
-    test_format_1(STANDARD_WEEK.ticks, "PT604800S");
-    test_format_1(-STANDARD_WEEK.ticks, "PT-604800S");
+    test_format_1(tick::STANDARD_WEEK, "PT604800S");
+    test_format_1(-tick::STANDARD_WEEK, "PT-604800S");
 
     test_format_1(Bounded::max_value(), "PT922337203685.4775807S");
     test_format_1(Bounded::min_value(), "PT-922337203685.4775808S");
