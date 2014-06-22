@@ -1,4 +1,5 @@
 /*.rlib
 /*.so
+/*.dylib
 /doc
 /datetime
