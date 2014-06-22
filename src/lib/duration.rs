@@ -13,7 +13,7 @@ use tick;
 #[deriving(PartialEq, PartialOrd, Ord, Eq,
            Clone, Zero, Default, Hash, Rand)]
 pub struct Duration {
-    ticks : i64
+    pub ticks : i64
 }
 
 impl Add<Duration, Duration> for Duration {
