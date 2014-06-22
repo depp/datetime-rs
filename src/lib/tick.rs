@@ -4,6 +4,8 @@
  * that minute.
  */
 
+/// The number of nanoseconds in a tick.
+static PER_NANOSECOND: i64 = 100;
 /// The number of ticks in a microsecond.
 pub static MICROSECOND: i64 = 10;
 /// The number of ticks in a millisecond.
@@ -69,4 +71,32 @@ pub fn to_sec_nsec(ticks: i64) -> (i64, i32) {
         rem += SECOND as i32;
     }
     (sec, rem * 100)
+}
+
+/// Convert from larger units to ticks.  The units can't be larger than
+/// about 2^30.
+fn from_larger_units(v1: i64, v2: i64, u1: i64, u2: i64) -> Option<i64> {
+    // Why is this complicated?  Because intermediate results may overflow
+    // even if the final result does not.
+    let hi: i64 = (v1 >> 32) * u1 + (v2 >> 32) * u2;
+    let lo: i64 = (v1 & 0xffffffff) * u1 + (v2 & 0xffffffff) * u2;
+    let hi: i64 = hi + (lo >> 32);
+    let lo: i64 = lo & 0xffffffff;
+    if hi != (hi as i32) as i64 {
+        return None;
+    }
+    Some(hi | (lo << 32))
+}
+
+/// Convert from seconds and microseconds to ticks.  Returns None on
+/// overflow.
+pub fn from_sec_usec(sec: i64, usec: i64) -> Option<i64> {
+    from_larger_units(sec, usec, SECOND, MICROSECOND)
+}
+
+/// Convert from seconds and nanoseconds to ticks.  Returns None on
+/// overflow.  Rounds to the nearest integral number of ticks.
+pub fn from_sec_nsec(sec: i64, nsec: i64) -> Option<i64> {
+    from_larger_units(sec, to_larger_unit(nsec, PER_NANOSECOND),
+                      SECOND, 1)
 }

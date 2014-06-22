@@ -6,4 +6,6 @@
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 
+extern crate libc;
 pub mod duration;
+mod tick;

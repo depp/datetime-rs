@@ -289,6 +289,18 @@ impl Duration {
         Duration { ticks: tick::DAY * 7 * n }
     }
 
+    /// Convert from a POSIX timeval structure.
+    pub fn from_timespec(value: &timespec) -> Option<Duration> {
+        tick::from_sec_nsec(value.tv_sec, value.tv_nsec)
+            .map(|n| Duration { ticks: n })
+    }
+
+    /// Convert from a POSIX timespec structure.
+    pub fn from_timeval(value: &timeval) -> Option<Duration> {
+        tick::from_sec_usec(value.tv_sec, value.tv_usec as i64)
+            .map(|n| Duration { ticks: n })
+    }
+
     /// Convert to whole seconds, with rounding.
     pub fn to_seconds(&self) -> i64 {
         tick::to_sec(self.ticks)
@@ -313,7 +325,7 @@ impl Duration {
     /// Convert to a POSIX timeval structure, with rounding.
     pub fn to_timeval(&self) -> timeval {
         let (sec, usec) = tick::to_sec_usec(self.ticks);
-        timeval { tv_sec: sec, tv_usec: usec as i64 }
+        timeval { tv_sec: sec, tv_usec: usec }
     }
 }
 
