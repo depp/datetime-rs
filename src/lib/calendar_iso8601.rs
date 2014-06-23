@@ -1,3 +1,12 @@
+/*
+    ISO-8601 calendar conversion functions
+
+    Uses the "chronological Julian day", which for this library, defines
+    2000-01-01 to be day 0.  Converts between CJD and the ISO-8601 calendar.
+    This module is internal because it just does the math and works on
+    untyped values.  There is no error checking here.
+*/
+
 use std::num::div_rem;
 use div_mod::div_mod;
 
