@@ -1,3 +1,6 @@
+use std::num::div_rem;
+use div_mod::div_mod;
+
 static EPOCH_LEN: int = 146097;
 static MONTHDAY: [int, ..12] = [
     0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
@@ -6,12 +9,7 @@ static MONTHDAY: [int, ..12] = [
 /// Convert an ISO 8601 date to a chronological Julian day.
 pub fn to_cjd(year: int, month: int, day: int) -> int {
     let y = year - 2000;
-    let mut a = y % 400;
-    let mut b = y / 400;
-    if a < 0 {
-        a += 400;
-        b -= 1;
-    }
+    let (b, a) = div_mod(y, 400);
     let mut leap = 1 + a / 4 - a / 100;
     if month <= 2 && (a % 4) == 0 && ((a % 100) != 0 || a == 0) {
         leap -= 1;
@@ -21,25 +19,11 @@ pub fn to_cjd(year: int, month: int, day: int) -> int {
 
 /// Convert a chronological Julian day to an ISO 8601 date.
 pub fn from_cjd(cjd: int) -> (int, int, int) {
-    let mut t1 = cjd / EPOCH_LEN;
-    let mut d = cjd % EPOCH_LEN;
-    if d < 0 {
-        t1 -= 1;
-        d += EPOCH_LEN;
-    }
-    let y = t1 * 400 + 2000;
-
-    let t2 = (d - 1) / 36524;
-    let d = (d - 1) % 36524;
-    let y = y + t2 * 100;
-
-    let t3 = (d + 1) / 1461;
-    let d = (d + 1) % 1461;
-    let y = y + t3 * 4;
-
-    let t4 = (d - 1) / 365;
-    let d = (d - 1) % 365;
-    let y = y + t4;
+    let (t1, d) = div_mod(cjd, EPOCH_LEN);
+    let (t2, d) = div_rem(d - 1, 36524);
+    let (t3, d) = div_rem(d + 1, 1461);
+    let (t4, d) = div_rem(d - 1, 365);
+    let y = 2000 + t1 * 400 + t2 * 100 + t3 * 4 + t4;
 
     let mut m = d / 29 + 1;
     if m > 12 || (m > 1 && d < MONTHDAY[(m - 1) as uint]) {
