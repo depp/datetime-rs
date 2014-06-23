@@ -3,9 +3,9 @@ use std::num::{Bounded, pow};
 use std::u64;
 use std::io::{MemWriter, IoResult};
 use std::fmt::{Show, Formatter, FormatError, WriteError};
-use std::fmt::rt::AlignLeft;
 use std::from_str::FromStr;
 use tick;
+use fmtutil;
 
 /// An absolute amount of time, independent of time zones and calendars.
 /// A duration can express the positive or negative difference between two
@@ -166,32 +166,7 @@ impl Show for Duration {
             Ok(x) => x,
             Err(_) => return Err(WriteError)
         };
-        let data = datavec.as_slice();
-        let padding = match f.width {
-            Some(width) => {
-                let sz = data.len();
-                if width > sz { width - sz } else { 0 }
-            }
-            None => 0
-        };
-
-        if padding == 0 {
-            return f.write(data)
-        }
-
-        if f.align == AlignLeft {
-            try!(f.write(data));
-        }
-        let mut fill = [0, ..4];
-        let filllen = f.fill.encode_utf8(fill);
-        let fill = fill.slice_to(filllen);
-        for _ in range(0, padding) {
-            try!(f.write(fill));
-        }
-        if f.align != AlignLeft {
-            try!(f.write(data));
-        }
-        Ok(())
+        fmtutil::write_field(f, datavec.as_slice())
     }
 }
 
@@ -365,11 +340,11 @@ fn test_format() {
     test_format_1(tick::HOUR, "PT3600S");
     test_format_1(-tick::HOUR, "PT-3600S");
 
-    test_format_1(tick::STANDARD_DAY, "PT86400S");
-    test_format_1(-tick::STANDARD_DAY, "PT-86400S");
+    test_format_1(tick::DAY, "PT86400S");
+    test_format_1(-tick::DAY, "PT-86400S");
 
-    test_format_1(tick::STANDARD_WEEK, "PT604800S");
-    test_format_1(-tick::STANDARD_WEEK, "PT-604800S");
+    test_format_1(tick::DAY * 7, "PT604800S");
+    test_format_1(-tick::DAY * 7, "PT-604800S");
 
     test_format_1(Bounded::max_value(), "PT922337203685.4775807S");
     test_format_1(Bounded::min_value(), "PT-922337203685.4775808S");
